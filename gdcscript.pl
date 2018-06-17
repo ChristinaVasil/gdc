@@ -156,11 +156,16 @@ sub exractMethylationVector{
 				for (my $gene_array =0; $gene_array < $length_gene; $gene_array++){
 			#	print "\nCompare $set_elements[$counter] with $gene[$gene_array]\n";	
 					if ($set_elements[$counter] eq $gene[$gene_array]){
-							$beta_value[$beta_counter] =  $column [1]; #o pinakas apothikeuei ola ta beta value gia to idio gonidio an uparxei se parapanw apo mia seira
+						#if ($column[1] != 'N/A'){
+						
+							$beta_value[$beta_counter] =  $column[1]; #o pinakas apothikeuei ola ta beta value gia to idio gonidio an uparxei se parapanw apo mia seira
 							$beta_counter++;
 							print "OK! $set_elements[$counter] equals $gene[$gene_array] and beta_value is $beta_value[$gene_array] \n";
 							$gene_array = $length_gene; #yparxei i periptwsi to $genes per probe na einai tis morfis gene1;gene1;gene1, epomenws o pinakas @gene tha ginei gene1 gene1 gene1 kai etsi to average tha einai lathos
 							#print "\n$beta_value[$gene_array]\n";
+							
+						#}
+						
 					}
 				
 				}
@@ -183,6 +188,7 @@ sub exractMethylationVector{
 	
 	}
 #osa exoun NA beta_value moy bgazei pws exei 0 average. to opoio einai lathos! na brw tropo na to diorthwsw!
+#den thelw oi NA values na upologzontai sto average giati to 0 exei fysiki simasia
  sub average_beta_value_per_gene{
 	
 	no warnings;
@@ -190,11 +196,22 @@ sub exractMethylationVector{
 	my ($ref_beta_value) = @_;
 	my @beta_value_def = @{$ref_beta_value};
 	return unless @beta_value_def;
-	my $length = $#beta_value_def;
+	my $length = @beta_value_def;
 	my $total;
-	foreach (@beta_value_def) {
-
-        $total += $_;
+	my @beta_value_array;
+	for (my $counter =0; $counter < $length; $counter ++){
+		
+		if ($beta_value_def[$counter] != 'N/A'){
+		
+			$beta_value_array[$counter] = $beta_value_def[$counter];
+		}
+		
+	}
+	foreach (@beta_value_array) {
+	
+			$total += $_;
+		
+        
     }
-    return $total/scalar @beta_value_def;
+    return $total/scalar @beta_value_array;
 }
