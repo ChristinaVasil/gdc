@@ -10,14 +10,15 @@ use Set::Object qw(set);
 # open mapping file
 open INPUT, "gdc_sample_sheet.2018-06-06.tsv" or die "Cannot find file";
 
-print "Hello! What type of data you want to process?\n";
+#print "Hello! What type of data you want to process?\n";
 
-my $data_type = "miRNA Expression Quantification";
+my $data_type = "Gene Expression Quantification";
 chomp $data_type;
 
-my @case_id=();
+my @sample_id=();
 my @folder_id = ();
 my @file_id = ();
+my @data_type = (); #apothikeuei ola ta diaforetika eidi dedomenwn gia to kathe deigma
 my $row_counter=0; 
 my @path;
 # initialize an empty hash patient_file_association, value is case id and key is the associated folder and file which is unique 
@@ -32,22 +33,28 @@ while (my $line = <INPUT>){
 		my @column = split ("\t", $line);
 		
 		if($column[3] eq $data_type){
-			print "OK\n";
+			
+			#print "OK\n";
+			
 			$folder_id[$row_counter] = $column[0];
 			
 			$file_id[$row_counter] = $column[1];
 			
-			$case_id[$row_counter] = $column[5];
+			$data_type[$row_counter] = $column[3];
+			
+			$sample_id[$row_counter] = $column[6];
 			
 			$path[$row_counter]  = join ("//", $folder_id[$row_counter],$file_id[$row_counter]);
 			
-			$patient_file_association{$case_id[$row_counter]} = $path[$row_counter];
-			$patient_data_association{$case_id[$row_counter]} = undef;
+			$patient_file_association{$sample_id[$row_counter]} = $path[$row_counter];
+			
+			$patient_data_association{$sample_id[$row_counter]} = undef;
+			
 			$row_counter++;
 			
 		}
 		
-		
+		#get_all_data_for_all_patients(%patient_file_association);
 		
 		@column =();
 	}
@@ -55,21 +62,104 @@ while (my $line = <INPUT>){
 }
 close INPUT;
 
-if ($data_type eq 'Methylation Beta Value'){
+#input ena hash poy tha sysxetizei astheneis me type of data
+#sub get_all_data_for_all_patients {
+
+#	my $data_type_length= @data_type;
+
+	#for(my $counter =0; $counter<$data_type_length; $counter++){
+
+		#	if ($data_type[$counter] eq 'Methylation Beta Value'){
+				
+			#	get_gene_symbols_from_methylation_files (\%patient_file_association);
+
+			#}
+
+		#	elsif ($data_type[$counter] eq 'miRNA Expression Quantification'){
+
+		#		get_mirna_id_from_mirna_files(\%patient_file_association);
+		#	}
+
+		#	elsif ($data_type[$counter] eq 'Gene Expression Quantification'){
+
+	my ($patient_data_association_hash_ref, $gene_sorted_list)	= get_gene_symbols_from_rnaseq_files(\%patient_file_association);
 	
-	get_gene_symbols_from_methylation_files (\%patient_file_association);
+	my @gene_symbol_sorted = @$gene_sorted_list;
+	my %patient_data_association_hash = %$patient_data_association_hash_ref;
+	
+	print "\n Edwwww\n";
+	print Dumper \%patient_data_association_hash;
+	
+	#write_output($patient_data_association_hash_ref, \@gene_symbol_sorted);
+		#	}
 
+#}
+#}
+
+#sub poy tha exei ws input 4 (mazi me ta klinika) hash enos deigmatos {key gene/gene/mirna => value } kai tis listes tous
+#gia kathe stoixeio tis listas bres to key kai grapse se ena arxeio to value toy hash
+
+sub write_output{
+	
+	my($patient_data_association_hash_ref, $gene_sorted_list) = @_;
+	my @gene_symbol_list= @$gene_sorted_list;
+	my %patient_data_association = %$patient_data_association_hash_ref;
+	my $temp = 0;
+	open WRITE, (">>output.txt" or die "cannot open file");
+	#print headers
+	if ($temp == 0 ){
+	
+		print WRITE "DATA";
+		
+		foreach my $element (@gene_symbol_list){
+	
+			print WRITE "$element";
+	
+		}
+		$temp++;
+		close WRITE;
+	}
+	open WRITE, (">>output.txt" or die "cannot open file");
+	
+	my $header_counter = 0;
+	my $length = @gene_symbol_list;
+	
+		
+	foreach my $patient (keys %patient_data_association){
+		
+		if ($header_counter == 0){
+				
+				print WRITE "$patient";
+				$header_counter ++;
+				
+			}
+		foreach my $gene (keys %{$patient_data_association{$patient}}){
+		
+			for ( my $counter = 0; $counter< $length; $counter++ ){
+			
+				if($gene_symbol_list[$counter] eq $gene){
+					
+					print WRITE "$patient_data_association{$patient}{$gene}";
+				
+				}
+		
+			}
+		
+		}
+
+		
+		$header_counter = 0;
+		
+	}
 }
+	
+	#foreach my $key (keys %patient_data_association){
+	
+		
+	
+	#}
 
-elsif ($data_type eq 'miRNA Expression Quantification'){
 
-	get_mirna_id_from_mirna_files(\%patient_file_association);
-}
-
-elsif ($data_type eq 'Gene Expression Quantification'){
-
-	get_gene_symbols_from_rnaseq_files(\%patient_file_association);
-}
 
 sub get_gene_symbols_from_rnaseq_files{
 	print "sub rna seq is called!\n";
@@ -82,7 +172,7 @@ sub get_gene_symbols_from_rnaseq_files{
 	my $test_counter = 0;
 	my @ensembl_id = ();
 	my @gene_name;
-
+	my @gene_ensembl_ref;
 	# for each case id, get name of folder and methylation file	
 	foreach my $key (keys %patient_rnaseq_file_association){
 		# open file
@@ -141,13 +231,20 @@ sub get_gene_symbols_from_rnaseq_files{
 	#creation of a hash that has as a key the case id and value a hash that is returned from the exractMethylationVector subroutine
 	foreach my $key (keys %patient_rnaseq_file_association){
 		#print "hey babe\n$patient_mirna_file_association{$key}\n";
-		$patient_data_association{$key} = exractRNAseqVector($patient_rnaseq_file_association{$key},$FULL_SET_OF_ENSEMBL_IDS, $FULL_SET_OF_GENE_NAME);
-
+		my $gene_ensembl_ref;
+		
+		($patient_data_association{$key}, $gene_ensembl_ref) = exractRNAseqVector($patient_rnaseq_file_association{$key},$FULL_SET_OF_ENSEMBL_IDS, $FULL_SET_OF_GENE_NAME);
+		
+		@gene_ensembl_ref = @$gene_ensembl_ref;
+		print "@gene_ensembl_ref/n";
+		
 	}
 
-	print Dumper \%patient_data_association;
+	return (\%patient_data_association,\@gene_ensembl_ref);
+	#print Dumper \%patient_data_association;
 
 }
+
 
 
 sub get_mirna_id_from_mirna_files{
@@ -204,7 +301,7 @@ sub get_gene_symbols_from_methylation_files{
 		
 	# initialize an empty set FULL_SET_OF_GENE_NAMES
 	my $FULL_SET_OF_GENE_NAMES = Set::Object->new();
-	my @genes_per_probe;
+	my @genes_per_probe = ();
 	my $test_counter = 0;
 	my @gene_symbol;
 
@@ -300,9 +397,26 @@ sub exractRNAseqVector{
 	
 	}
 	
+	#sort @set_ensembl and @set_gene_name alphabetically
+	sort { (lc($a) cmp lc($b)) or ($a cmp $b) } @set_ensembl;
+	sort { (lc($a) cmp lc($b)) or ($a cmp $b) } @set_gene_name;
+	
+#	for ( $counter=0; $counter < $size; $counter++){
+		
+	#	print "\nsort ensembl $set_ensembl[$counter]\n ";
+	
+	#	}
+		
+	#	for ( $counter=0; $counter < $size; $counter++){
+		
+	#	print "\nsort gene_symbol $set_gene_name[$counter]\n ";
+	
+		#}
+
+	
 	#open file
 	
-	print "\n$filename\n";
+	#print "\n$filename\n";
 	#	print "\n size $size\n";
 	#sygkrisi olwn twn genes pou exoun apothikeutei sto set me oles tis grammes gia ola ta arxeia
 	#sygkrisi kathe gene sto @set_elements me oles tis grammes kathe arxeioy
@@ -358,7 +472,7 @@ sub exractRNAseqVector{
 		close FILE;
 		}
 		#print Dumper \%RES_VEC;
-		return \%RES_VEC;
+		return (\%RES_VEC, \@set_gene_name);
 	}
 	
 	
