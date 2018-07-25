@@ -7,19 +7,19 @@ use Data::Dumper;
 use Set::Object;
 use Set::Object qw(set);
 
+print "Enter the name of the sample file\n";
+my $sample_file = "gdc_sample_sheet.2018-06-06.tsv"; #<STDIN>;
+
 # open mapping file
-open INPUT, "gdc_sample_sheet.2018-06-06.tsv" or die "Cannot find file";
-
-
+open INPUT, $sample_file or die "Cannot find file";
 
 my @sample_id=();
-my @folder_id = ();
-my @file_id = ();
 my @data_type = (); #apothikeuei ola ta diaforetika eidi dedomenwn gia to kathe deigma
 my $row_counter=0; 
-my @path;
 # initialize an empty hash patient_file_association, value is case id and key is the associated folder and file which is unique 
 #works ok!
+my %patient_vital_status_association;
+my %patient_daysToDeath_association;
 my %patient_meth_file_association;
 my %patient_mirna_file_association;
 my %patient_rnaseq_file_association;
@@ -28,20 +28,16 @@ my %patient_type_of_data_association;
 my $FULL_SET_OF_DATA_TYPES = Set::Object->new();
 my $FULL_SET_OF_SAMPLES = Set::Object->new();
 
+#store folder id/file id, file_id/file name, data type, 
 while (my $line = <INPUT>){
 	
 	if ($. > 1){
 	
 		my @column = split ("\t", $line);
-	
-			
-		$folder_id[$row_counter] = $column[0];
-		
-		$file_id[$row_counter] = $column[1];
-		
+
 		$data_type[$row_counter] = $column[3];
 		
-		$sample_id[$row_counter] = $column[6];
+		$sample_id[$row_counter] = $column[5];
 		
 		
 		$patient_type_of_data_association {$sample_id[$row_counter]} = undef;
@@ -68,25 +64,38 @@ my @datatype = ();
 foreach my $sample (@SET_OF_Sample_IDs){
 	
 	open INPUT, "gdc_sample_sheet.2018-06-06.tsv" or die "Cannot find file";
+	#open CLIN, "clinical_test.txt" or die "Cannot find file";
 	while (my $row = <INPUT>){
-
-		my @column = split ("\t", $row);
-
-		my $data_type = $column[3];
-		my $sample_id = $column[6];
-		if ($sample eq $sample_id){
 		
-				push (@datatype, $data_type);
+		if ($.>1){
+		
+			my @column = split ("\t", $row);
+
+			my $data_type = $column[3];
+			my $sample_id = $column[5];
+			if ($sample eq $sample_id){
+			
+					push (@datatype, $data_type);
+			
+			}
+		
 		
 		}
 
 	
 	}
+
 	my $datatypes_conc = join (";", @datatype);
 	$patient_type_of_data_association {$sample} = $datatypes_conc;
+	
 	close INPUT;
 	@datatype = ();
 }
+
+
+#print Dumper \%patient_type_of_data_association;
+
+
 
 foreach my $sample (keys %patient_type_of_data_association){
 	
@@ -95,6 +104,7 @@ foreach my $sample (keys %patient_type_of_data_association){
 	my $mirna =0;
 
 	open INPUT, "gdc_sample_sheet.2018-06-06.tsv" or die "Cannot find file";
+
 	while (my $line = <INPUT>){
 	
 		if ($. > 1){
@@ -102,7 +112,7 @@ foreach my $sample (keys %patient_type_of_data_association){
 			my @column = split ("\t", $line);
 			my $folder_id = $column[0];
 			my $file_id = $column[1];
-			my $sample_id = $column[6];
+			my $sample_id = $column[5];
 			my $data_type = $column[3];
 			
 			if ($sample_id eq $sample){
@@ -141,20 +151,19 @@ foreach my $sample (keys %patient_type_of_data_association){
 		}
 	
 	}
+
 	
 	close INPUT;
-	$meth =0;
-	$mirna =0;
-	$rnaseq =0;
+
 }
 
 
-print "--------rna----\n";
-print Dumper \%patient_rnaseq_file_association;
-print "--------meth----\n";
-print Dumper \%patient_meth_file_association;
-print "--------mirna----\n";
-print Dumper \%patient_mirna_file_association;
+#print "--------rna----\n";
+#print Dumper \%patient_rnaseq_file_association;
+#print "--------meth----\n";
+#print Dumper \%patient_meth_file_association;
+#print "--------mirna----\n";
+#print Dumper \%patient_mirna_file_association;
 
 
 get_all_data_for_all_patients(\%patient_rnaseq_file_association,\%patient_meth_file_association,\%patient_mirna_file_association,$FULL_SET_OF_DATA_TYPES,$FULL_SET_OF_SAMPLES);
@@ -163,9 +172,9 @@ get_all_data_for_all_patients(\%patient_rnaseq_file_association,\%patient_meth_f
 
 sub get_all_data_for_all_patients {
 
-	no warnings;
+	use warnings;
 	
-	my($patient_mrna_file_association_ref,$patient_meth_file_association_ref,$patient_mirna_file_association_ref, $FULL_SET_OF_DATA_TYPES,$FULL_SET_OF_SAMPLES) = @_;
+	my($patient_mrna_file_association_ref,$patient_meth_file_association_ref,$patient_mirna_file_association_ref,$FULL_SET_OF_DATA_TYPES,$FULL_SET_OF_SAMPLES) = @_;
 	my @set_of_data_types = @$FULL_SET_OF_DATA_TYPES;
 	my @set_of_samples = @$FULL_SET_OF_SAMPLES;
 	my %patient_mrna_file_association = %$patient_mrna_file_association_ref;
@@ -180,10 +189,12 @@ sub get_all_data_for_all_patients {
 	my $gene_meth_sorted_list;
 	
 	for(my $counter =0; $counter<$data_type_length; $counter++){
+	
 
 			if ($set_of_data_types[$counter] eq 'Methylation Beta Value'){
 				
-			($patient_meth_data_association_hash_ref, $gene_meth_sorted_list) = get_gene_symbols_from_methylation_files (\%patient_meth_file_association);
+				($patient_meth_data_association_hash_ref, $gene_meth_sorted_list) = get_gene_symbols_from_methylation_files (\%patient_meth_file_association);
+			
 			}
 
 			elsif ($set_of_data_types[$counter] eq 'miRNA Expression Quantification'){
@@ -196,6 +207,7 @@ sub get_all_data_for_all_patients {
 				($patient_rnaseq_data_association_hash_ref, $gene_sorted_list)	= get_gene_symbols_from_rnaseq_files(\%patient_mrna_file_association);
 				
 			}
+			
 	}
 	
 	my @gene_symbol_sorted = @$gene_sorted_list;
@@ -205,6 +217,9 @@ sub get_all_data_for_all_patients {
 	my @gene_meth_sorted = @$gene_meth_sorted_list;
 	my %patient_rnaseq_data_association = %$patient_rnaseq_data_association_hash_ref;
 	
+	
+	print "-----type of data---\n";
+	print Dumper \%patient_type_of_data_association;
 	print "-----meth---\n";
 	print Dumper \%patient_meth_data_association;
 	print "-----mirna---\n";
@@ -212,7 +227,7 @@ sub get_all_data_for_all_patients {
 	print "-----mrna---\n";
 	print Dumper \%patient_rnaseq_data_association;
 	
-	write_output(\%patient_type_of_data_association,\%patient_meth_data_association,\%patient_mirna_data_association,\%patient_rnaseq_data_association, \@gene_symbol_sorted,\@mirna_sorted,\@gene_meth_sorted,\@set_of_samples);
+	write_output(\%patient_meth_data_association,\%patient_mirna_data_association,\%patient_rnaseq_data_association, \@gene_symbol_sorted,\@mirna_sorted,\@gene_meth_sorted,\@set_of_samples);
 	
 }
 
@@ -223,12 +238,10 @@ sub write_output{
 	
 	no warnings;
 
-	my($patient_type_of_data_association_ref,$patient_meth_data_association_hash_ref,$patient_mirna_data_association_hash_ref,$patient_rna_data_association_hash_ref, $gene_sorted_list, $mirna_sorted_list, $gene_meth_sorted_list,$all_samples) = @_;
+	my($patient_meth_data_association_hash_ref,$patient_mirna_data_association_hash_ref,$patient_rna_data_association_hash_ref, $gene_sorted_list, $mirna_sorted_list, $gene_meth_sorted_list)= @_; #,#$all_samples) = @_;
 	my @gene_symbol_list= @$gene_sorted_list;
 	my @mirna_symbol_list= @$mirna_sorted_list;
 	my @gene_meth_symbol_list= @$gene_meth_sorted_list;
-	my @set_of_all_samples= @$all_samples;
-	my %patient_type_of_data_association = %$patient_type_of_data_association_ref;
 	my %patient_meth_data_association = %$patient_meth_data_association_hash_ref;
 	my %patient_mirna_data_association = %$patient_mirna_data_association_hash_ref;
 	my %patient_rna_data_association = %$patient_rna_data_association_hash_ref;
@@ -237,6 +250,7 @@ sub write_output{
 	my $counter;
 	
 	open WRITE, ">>output.txt" or die "cannot open file";
+	
 	#print headers
 	
 	print WRITE "DATA\t";
@@ -256,18 +270,14 @@ sub write_output{
 		print WRITE "$dna_meth\t";
 
 	}
-	#print WRITE "\n";
-	#close WRITE;
 	
-	#open WRITE, ">>output.txt" or die "cannot open file";
-	
-	#my $header_counter = 0;
+	print 	WRITE "Vital_statut\t";
+	print 	WRITE "Days_To_Death\t";
+
 	my $gene_length = @gene_symbol_list;
 	my $mirna_length = @mirna_symbol_list;
 	my $meth_length = @gene_meth_symbol_list;
-	#print "length $length\n";
-	
-	#foreach my $sample (@set_of_all_samples){
+
 	foreach my $sample (keys %patient_type_of_data_association){
 			
 			print "\n patient $sample\n"; 
@@ -276,7 +286,7 @@ sub write_output{
 			my $rnaseq = 0;
 			my $mirna = 0;
 			my $meth = 0;
-			#my $written_once = 0;
+
 			print WRITE "\n$sample\t";
 			
 			for (my $counter_type=0; $counter_type<$length; $counter_type++){
@@ -312,7 +322,7 @@ sub write_output{
 										#print "\n $gene_symbol_list[$counter] equals $gene and has this value $patient_rna_data_association{$rna_patient}{$gene}\n";
 										
 										print WRITE "$patient_rna_data_association{$rna_patient}{$gene}\t";
-										#$written_once++;
+									
 									}
 								
 							}
@@ -333,87 +343,107 @@ sub write_output{
 			}
 
 			
-		if($mirna == 1){
-		
-				foreach my $mirna_patient (keys %patient_mirna_data_association){
-				
-					if ($mirna_patient eq $sample){
-						
-						for ($counter = 0; $counter < $mirna_length; $counter++ ){
+			if($mirna == 1){
+			
+					foreach my $mirna_patient (keys %patient_mirna_data_association){
 					
-							foreach my $mirna ( keys %{$patient_mirna_data_association{$mirna_patient}}){
+						if ($mirna_patient eq $sample){
+							
+							for ($counter = 0; $counter < $mirna_length; $counter++ ){
+						
+								foreach my $mirna ( keys %{$patient_mirna_data_association{$mirna_patient}}){
+									
+									#print "mirna $mirna\n";
+
+										if($mirna_symbol_list[$counter] eq $mirna){
+
+											#print "\n $mirna_symbol_list[$counter] equals $mirna and has this value $patient_mirna_data_association{$mirna_patient}{$mirna}\n";
+											
+											print WRITE "$patient_mirna_data_association{$mirna_patient}{$mirna}\t";
+										}
+									
+								}
+					
+							}
+						}
+					}
+			}			
+			elsif($mirna == 0){
+
+				for ($counter = 0; $counter < $mirna_length; $counter++ ){
+
+						print WRITE "-\t";
+
+				}
+
+			}
+				
+			
+			if($meth == 1){
+			
+				foreach my $meth_patient (keys %patient_meth_data_association){
+				
+					if ($meth_patient eq $sample){
+						
+						for ($counter = 0; $counter < $meth_length; $counter++ ){
+					
+							foreach my $meth_gene ( keys %{$patient_meth_data_association{$meth_patient}}){
 								
-								#print "mirna $mirna\n";
+								#print "meth_gene $meth_gene\n";
 
-									if($mirna_symbol_list[$counter] eq $mirna){
+									if($gene_meth_symbol_list[$counter] eq $meth_gene){
 
-										#print "\n $mirna_symbol_list[$counter] equals $mirna and has this value $patient_mirna_data_association{$mirna_patient}{$mirna}\n";
+										#print "\n $gene_meth_symbol_list[$counter] equals $meth_gene and has this value $patient_meth_data_association{$meth_patient}{$meth_gene}\n";
 										
-										print WRITE "$patient_mirna_data_association{$mirna_patient}{$mirna}\t";
+										print WRITE "$patient_meth_data_association{$meth_patient}{$meth_gene}\t";
 									}
+								
 								
 							}
 				
 						}
 					}
-				}
-		}			
-		elsif($mirna == 0){
-
-			for ($counter = 0; $counter < $mirna_length; $counter++ ){
-
-					print WRITE "-\t";
-
-			}
-
-		}
 			
-		
-		if($meth == 1){
-		
-			foreach my $meth_patient (keys %patient_meth_data_association){
-			
-				if ($meth_patient eq $sample){
-					
-					for ($counter = 0; $counter < $meth_length; $counter++ ){
+				}	
 				
-						foreach my $meth_gene ( keys %{$patient_meth_data_association{$meth_patient}}){
-							
-							#print "meth_gene $meth_gene\n";
-
-								if($gene_meth_symbol_list[$counter] eq $meth_gene){
-
-									#print "\n $gene_meth_symbol_list[$counter] equals $meth_gene and has this value $patient_meth_data_association{$meth_patient}{$meth_gene}\n";
-									
-									print WRITE "$patient_meth_data_association{$meth_patient}{$meth_gene}\t";
-								}
-							
-							
-						}
-			
-					}
-				}
-		
-			}	
-			
-		}
-		elsif($mirna == 0){
-			
-			for ($counter = 0; $counter < $mirna_length; $counter++ ){
-
-								print WRITE "-\t";
-		
 			}
-		
-		}
+			elsif($meth == 0){
+				
+				for ($counter = 0; $counter < $meth_length; $counter++ ){
 
-		
-		
+									print WRITE "-\t";
+			
+				}
+			
+			}
+			open CLIN, "clinical_test.txt" or die "Cannot find file";
+			while (my $row = <CLIN>){
+			
+				if ($.>1){
+					
+					my @column = split ("\t", $row);
+					my $submitter_id = $column[1];
+					my $vital_status = $column[13];
+					my $days_to_death = $column[15];
+				
+
+					if ($submitter_id eq $sample){
+					
+						print WRITE "$vital_status\t";
+						print WRITE "$days_to_death\t";
+				
+					}
+			
+				}
+
+			}
+			close CLIN;
 		@data_type_per_sample = ();
-		
-
+				
 	}
-	close WRITE;			
+	
+	
+	close WRITE;
 }
 
 
@@ -630,8 +660,8 @@ sub get_gene_symbols_from_methylation_files{
 
 	}
 	@gene_sorted_meth = @$gene_sorted_meth_ref;
-	print "Also Here!!!\n";
-	print Dumper \%patient_meth_data_association;
+	#print "Also Here!!!\n";
+	#print Dumper \%patient_meth_data_association;
 	return (\%patient_meth_data_association,\@gene_sorted_meth);
 
 }
@@ -682,7 +712,7 @@ sub exractRNAseqVector{
 	for ( $counter=0; $counter < $sizeEnsembl; $counter++){
 		
 		open FILE, $filename or die "Cannot find file";
-		#print "\n heyyyy $set_elements[$counter]\n";
+		
 		while (my $row = <FILE>){
 		
 		
@@ -724,8 +754,7 @@ sub exractRNAseqVector{
 		}
 
 		@column = ();
-		#@reads_per_million_miRNA_mapped = ();
-		#$reads_counter = 0;
+	
 		close FILE;
 	}
 		#print Dumper \%RES_VEC;
@@ -758,14 +787,13 @@ sub exractmiRNAVector{
 	}
 
 
-	#print "\n$filename\n";
-	#	print "\n size $size\n";
+
 	#sygkrisi olwn twn genes pou exoun apothikeutei sto set me oles tis grammes gia ola ta arxeia
 	#sygkrisi kathe gene sto @set_elements me oles tis grammes kathe arxeioy
 	for ( $counter=0; $counter < $size; $counter++){
 		
 		open FILE, $filename or die "Cannot find file";
-		#print "\n heyyyy $set_elements[$counter]\n";
+		
 		while (my $row = <FILE>){
 			if ($. > 1){
 
@@ -858,10 +886,10 @@ sub exractMethylationVector{
 			}
 		}
 	
-		print " \n this gene of geneset $set_elements[$counter] has these @beta_value beta values\n";
+		#print " \n this gene of geneset $set_elements[$counter] has these @beta_value beta values\n";
 		
 		$RES_VEC{$set_elements[$counter]} = average_beta_value_per_gene(\@beta_value);
-		print "\n$set_elements[$counter] has average $RES_VEC{$set_elements[$counter]}\n";
+		#print "\n$set_elements[$counter] has average $RES_VEC{$set_elements[$counter]}\n";
 		@column = ();
 		@genes_probe = (); 
 		@gene = ();
@@ -870,8 +898,8 @@ sub exractMethylationVector{
 		close FILE;
 	}
 	
-		print "Heereee\n";
-		print Dumper \%RES_VEC;
+		#print "Heereee\n";
+		#print Dumper \%RES_VEC;
 	return (\%RES_VEC,\@set_elements);	
 	
 }
@@ -883,7 +911,7 @@ sub exractMethylationVector{
  sub average_beta_value_per_gene{
 
 	no warnings;
-	#print "\naverage_beta_value_per_gene is called!\n";
+	print "\naverage_beta_value_per_gene is called!\n";
 	my ($ref_beta_value) = @_;
 	my @beta_value_def = @{$ref_beta_value};
 	#print "\n beta_value_def is @beta_value_def\n ";
