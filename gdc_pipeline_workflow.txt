@@ -1,0 +1,12 @@
+## Download manifest file
+
+## Download gdc-client data tranfer tool
+
+## Unzip gdc-client
+
+unzip gdc-client_v1.5.0_Ubuntu_x64.zip
+
+## Run gdc tool and download all files through manifest.txt
+
+/datastore/cvas/gdc-client download -m  /datastore/cvas/gdc_manifest_6746fe840d924cf623b4634b5ec6c630bd4c06b5.txt
+
