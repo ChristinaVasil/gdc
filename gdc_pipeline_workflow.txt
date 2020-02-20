@@ -10,3 +10,11 @@ unzip gdc-client_v1.5.0_Ubuntu_x64.zip
 
 /datastore/cvas/gdc-client download -m  /datastore/cvas/gdc_manifest_6746fe840d924cf623b4634b5ec6c630bd4c06b5.txt
 
+## Install CPAN perl modules, visit https://www.linuxcloudvps.com/blog/how-to-install-perl-modules-using-cpan-on-linux/
+
+# Make "Raw" representation feature vectors 
+perl gdcscript.pl
+
+#Done
+
+# Normalize values
