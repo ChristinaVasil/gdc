@@ -94,7 +94,7 @@ while (my $line = <INPUT>){
 
 		$data_type[$row_counter] = $column[3];
 		
-		$sample_id[$row_counter] = $column[5];
+		$sample_id[$row_counter] = $column[6];
 		
 		
 		$patient_type_of_data_association {$sample_id[$row_counter]} = undef;
@@ -131,7 +131,7 @@ foreach my $sample (@SET_OF_Sample_IDs){
 			my @column = split ("\t", $row);
 
 			my $data_type = $column[3];
-			my $sample_id = $column[5];
+			my $sample_id = $column[6];
 			if ($sample eq $sample_id){
 			
 					push (@datatype, $data_type);
@@ -172,7 +172,7 @@ foreach my $sample (keys %patient_type_of_data_association){
 			my @column = split ("\t", $line);
 			my $folder_id = $column[0];
 			my $file_id = $column[1];
-			my $sample_id = $column[5];
+			my $sample_id = $column[6];
 			my $data_type = $column[3];
 			
 			if ($sample_id eq $sample){
@@ -542,11 +542,13 @@ sub write_output{
 					
 					my @column = split ("\t", $row);
 					my $submitter_id = $column[1];
-					my $vital_status = $column[13];
-					my $days_to_death = $column[15];
+					my $vital_status = $column[29];
+					my $days_to_death = $column[9];
 				
 
-					if ($submitter_id eq $sample){
+					my $case_id = substr($sample, 0,12);
+					
+					if ($submitter_id eq $case_id){
 					
 						print WRITE "$vital_status\t";
 						print WRITE "$days_to_death\t";

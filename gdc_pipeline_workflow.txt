@@ -15,6 +15,11 @@ unzip gdc-client_v1.5.0_Ubuntu_x64.zip
 # Make "Raw" representation feature vectors 
 perl gdcscript.pl
 
+# I changed the case id to sample id
+# my $sample_id = $column[6];
+
+# I changed the number of columns in clinical data for vital status and days to death. Fields we won't use. there is no point. For clinical data we only have cases.
+
 #Done
 
 # Normalize values
